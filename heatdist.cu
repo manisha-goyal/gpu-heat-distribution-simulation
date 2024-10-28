@@ -21,7 +21,7 @@
 // Function declarations: Feel free to add any functions you want.
 void  seq_heat_dist(float *, unsigned int, unsigned int);
 void  gpu_heat_dist(float *, unsigned int, unsigned int);
-bool is_interior_point(int i, int j, int N);
+__global__ void heat_kernel(float *playground, float *temp, unsigned int N);
 
 /*****************************************************************/
 /**** Do NOT CHANGE ANYTHING in main() function ******/
@@ -207,11 +207,6 @@ void  gpu_heat_dist(float * playground, unsigned int N, unsigned int iterations)
   cudaFree(temp_d);
 }
 
-/* Function to check if a point is within the interior of the grid */
-bool is_interior_point(int i, int j, int N) {
-    return (i > 0 && i < N - 1 && j > 0 && j < N - 1);
-}
-
 /* Kernel code */
 __global__ void heat_kernel(float *playground, float *temp, unsigned int N) {
   int threadId_x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -223,7 +218,7 @@ __global__ void heat_kernel(float *playground, float *temp, unsigned int N) {
   for (int i = threadId_x; i < N; i += offset_x) {
     for(int j = threadId_y; j < N; j += offset_y)
       // Only update interior points
-      if (is_interior_point(i, j, N)) {
+      if (i > 0 && i < N - 1 && j > 0 && j < N - 1) {
         // Calculate the average temperature of neighboring points
         temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +
                                 playground[index(i + 1, j, N)] +
