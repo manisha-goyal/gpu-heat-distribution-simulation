@@ -3,7 +3,7 @@
 # Parameters for the experiment
 DIMENSIONS=(100 500 1000 10000)      # Grid sizes
 ITERATIONS=(50 100)                  # Number of iterations
-BLOCK_SIZES=(16)                  # Block sizes to test
+BLOCK_SIZES=(16 32)                  # Block sizes to test
 NUM_RUNS=5                           # Number of runs for averaging
 
 # Output CSV file
@@ -47,8 +47,8 @@ for BLOCK_SIZE in "${BLOCK_SIZES[@]}"; do
             # Calculate the speedup (CPU time divided by GPU time)
             speedup=$(echo "scale=6; $avg_time_cpu / $avg_time_gpu" | bc)
 
-            # Write the results to the CSV file
-            echo "$BLOCK_SIZE,$ITER,$DIM,$avg_time_cpu,$avg_time_gpu,$speedup" >> $output_file
+            # Write the results to the CSV file using printf for formatting
+            printf "%s,%s,%s,%.6f,%.6f,%.6f\n" "$BLOCK_SIZE" "$ITER" "$DIM" "$avg_time_cpu" "$avg_time_gpu" "$speedup" >> $output_file
 
             echo "Results - Block Size: $BLOCK_SIZE, Iterations: $ITER, Dimension: $DIM, Avg CPU Time: $avg_time_cpu, Avg GPU Time: $avg_time_gpu, Speedup: $speedup"
         done
