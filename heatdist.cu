@@ -180,8 +180,9 @@ void  gpu_heat_dist(float * playground, unsigned int N, unsigned int iterations)
     exit(1);
   }
 
-  // Define block and grid dimensions
+  // Define a 2D block
   dim3 block(16, 16);
+  // Define a 2D grid of blocks to fully cover an N x N data grid
   dim3 grid((N + block.x - 1) / block.x, (N + block.y - 1) / block.y);
 
   // Run the kernel for the specified number of iterations
