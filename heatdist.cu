@@ -21,7 +21,7 @@
 // Function declarations: Feel free to add any functions you want.
 void  seq_heat_dist(float *, unsigned int, unsigned int);
 void  gpu_heat_dist(float *, unsigned int, unsigned int);
-
+bool is_interior_point(int i, int j, int N);
 
 /*****************************************************************/
 /**** Do NOT CHANGE ANYTHING in main() function ******/
@@ -154,7 +154,80 @@ void  gpu_heat_dist(float * playground, unsigned int N, unsigned int iterations)
   
   /* Here you have to write any cuda dynamic allocations, any communications between device and host, any number of kernel
      calls, etc. */
-  
+
+  float *playground_d, *temp_d;
+  size_t size = N * N * sizeof(float);
+
+  //Allocate the playground and temp playground in the device
+  if (cudaMalloc((void**)&playground_d, size) != cudaSuccess)
+	{
+		printf("Error allocating playground of %dx%d elements on device\n", N, N);
+		exit(1);
+	}
+  if (cudaMalloc((void**)&temp_d, size) != cudaSuccess)
+	{
+		printf("Error allocating temp playground of %dx%d elements on device\n", N, N);
+		exit(1);
+	}
+
+  //Copy playground to the device
+	if (cudaMemcpy(playground_d, playground, size, cudaMemcpyHostToDevice) != cudaSuccess) {
+    printf("Error copying playground from host to device\n");
+    exit(1);
+  }
+  if (cudaMemcpy(temp_d, playground, size, cudaMemcpyHostToDevice) != cudaSuccess) {
+    printf("Error copying playground from host to device\n");
+    exit(1);
+  }
+
+  // Define block and grid dimensions
+  dim3 block(16, 16);
+  dim3 grid((N + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+
+  // Run the kernel for the specified number of iterations
+  for (int k = 0; k < iterations; k++) {
+      heat_kernel<<<grid, block>>>(playground_d, temp_d, N);
+      cudaDeviceSynchronize();
+
+      // Copy playground data for next iteration
+      float* temp = playground_d;
+      playground_d = temp_d;
+      temp_d = temp;
+  }
+
+  // Copy the result back to the host
+  if (cudaMemcpy(playground, playground_d, size, cudaMemcpyDeviceToHost) != cudaSuccess) {
+    printf("Error copying result from device to host\n");
+    exit(1);
+  }
+
+  //Free the playground and temp playground in the device
+  cudaFree(playground_d);
+  cudaFree(temp_d);
 }
 
+/* Function to check if a point is within the interior of the grid */
+bool is_interior_point(int i, int j, int N) {
+    return (i > 0 && i < N - 1 && j > 0 && j < N - 1);
+}
 
+/* Kernel code */
+__global__ void heat_kernel(float *playground, float *temp, unsigned int N) {
+  int threadId_x = blockIdx.x * blockDim.x + threadIdx.x;
+  int threadId_y = blockIdx.y * blockDim.y + threadIdx.y;
+  int offset_x = blockDim.x * gridDim.x;
+  int offset_y = blockDim.y * gridDim.y;
+
+  // Traverse the grid with strides in both x and y directions
+  for (int i = threadId_x; i < N; i += offset_x) {
+    for(int j = threadId_y; j < N; j += offset_y)
+      // Only update interior points
+      if (is_interior_point(i, j, N)) {
+        // Calculate the average temperature of neighboring points
+        temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +
+                                playground[index(i + 1, j, N)] +
+                                playground[index(i, j - 1, N)] +
+                                playground[index(i, j + 1, N)]) / 4.0;
+      }
+  }
+}
