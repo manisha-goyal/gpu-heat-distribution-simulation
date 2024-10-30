@@ -21,7 +21,7 @@
 // Function declarations: Feel free to add any functions you want.
 void  seq_heat_dist(float *, unsigned int, unsigned int);
 void  gpu_heat_dist(float *, unsigned int, unsigned int);
-__global__ void heat_kernel(float *playground, float *temp, unsigned int N);
+__global__ void heat_kernel(float *, float *, unsigned int);
 
 /*****************************************************************/
 /**** Do NOT CHANGE ANYTHING in main() function ******/
@@ -180,10 +180,9 @@ void  gpu_heat_dist(float * playground, unsigned int N, unsigned int iterations)
     exit(1);
   }
 
-  // Define a 2D block
+  // Define a 2D block and grid
   dim3 block(16, 16);
-  // Define a 2D grid of blocks to fully cover an N x N data grid
-  dim3 grid((N + block.x - 1) / block.x, (N + block.y - 1) / block.y);
+  dim3 grid(256, 256);
 
   // Run the kernel for the specified number of iterations
   for (int k = 0; k < iterations; k++) {
@@ -211,13 +210,13 @@ void  gpu_heat_dist(float * playground, unsigned int N, unsigned int iterations)
 __global__ void heat_kernel(float *playground, float *temp, unsigned int N) {
   int threadId_x = blockIdx.x * blockDim.x + threadIdx.x;
   int threadId_y = blockIdx.y * blockDim.y + threadIdx.y;
-  int offset_x = blockDim.x * gridDim.x;
-  int offset_y = blockDim.y * gridDim.y;
+  int totalNumOfThreads_x = blockDim.x * gridDim.x;
+  int totalNumOfThreads_y = blockDim.y * gridDim.y;
 
-  // Traverse the grid with strides in both x and y directions
-  for (int i = threadId_x; i < N; i += offset_x) {
-    for(int j = threadId_y; j < N; j += offset_y)
-      // Only update interior points
+  //Loop over elements in chunks of totalNumOfThreads such that each thread handles multiple elements
+  for (int i = threadId_x; i < N; i += totalNumOfThreads_x) {
+    for(int j = threadId_y; j < N; j += totalNumOfThreads_y)
+      // Only update interior points in the playground
       if (i > 0 && i < N - 1 && j > 0 && j < N - 1) {
         // Calculate the average temperature of neighboring points
         temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +

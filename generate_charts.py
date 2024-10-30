@@ -2,7 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Read the experiment results from the CSV file
-data = pd.read_csv('experiment_results.csv')
+data = pd.read_csv('./results/experiment_results.csv')
 
 # Define a function to plot CPU vs GPU times and Speedup for each configuration
 def plot_experiment(data, block_size, grid_size, iterations):
@@ -31,7 +31,7 @@ def plot_experiment(data, block_size, grid_size, iterations):
     # Add labels and title
     plt.xlabel('Grid Dimension (N)')
     plt.ylabel('Speedup (CPU Time / GPU Time)')
-    plt.title(f'Speedup for Block Size {block_size}, Grid Size {grid_size}, {iterations} Iterations')
+    plt.title(f'Speedup for Block Size {block_size}x{block_size}, Grid Size {grid_size}x{grid_size}, {iterations} Iterations')
     plt.xticks([i for i in index], dimensions, rotation=45, ha='right')
     plt.tight_layout()
     plt.savefig(f'plot_block_{block_size}_grid_{grid_size}_iter_{iterations}_speedup.png')
